@@ -116,4 +116,51 @@ const login = async (req, res) => {
   }
 };
 
-module.exports = { signup, login };
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Logout — blacklist the current JWT so it cannot be reused
+// @route   POST /api/auth/logout
+// @access  Private (requires valid Bearer token)
+// ─────────────────────────────────────────────────────────────────────────────
+const logout = async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(400).json({
+        success: false,
+        message: "No token provided",
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    // Decode to get expiry so the blacklist entry auto-purges via TTL
+    const jwt = require("jsonwebtoken");
+    const decoded = jwt.decode(token);
+    const expiresAt = decoded?.exp
+      ? new Date(decoded.exp * 1000)
+      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // fallback: 7 days
+
+    const BlacklistedToken = require("../models/BlacklistedToken");
+
+    // Upsert to avoid duplicate-key errors if already blacklisted
+    await BlacklistedToken.findOneAndUpdate(
+      { token },
+      { token, expiresAt },
+      { upsert: true }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+module.exports = { signup, login, logout };

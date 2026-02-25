@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const BlacklistedToken = require("../models/BlacklistedToken");
 
 // ─────────────────────────────────────────────────────────────────────────────
 // @desc    Protect routes — verify Bearer JWT and attach user to req.user
@@ -20,7 +21,16 @@ const authMiddleware = async (req, res, next) => {
     // 2. Extract token from "Bearer <token>"
     const token = authHeader.split(" ")[1];
 
-    // 3. Verify the token
+    // 3. Check if the token has been blacklisted (user logged out)
+    const isBlacklisted = await BlacklistedToken.findOne({ token });
+    if (isBlacklisted) {
+      return res.status(401).json({
+        success: false,
+        message: "Token has been invalidated. Please log in again.",
+      });
+    }
+
+    // 4. Verify the token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     // 4. Fetch the user from DB and attach to request (excluding password)
