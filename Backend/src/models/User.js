@@ -1,6 +1,21 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
+// ── Address Sub-Document Schema ─────────────────────────────────────────────
+const addressSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    phone: { type: String, required: true, trim: true },
+    line1: { type: String, required: true, trim: true },
+    city: { type: String, required: true, trim: true },
+    state: { type: String, required: true, trim: true },
+    pincode: { type: String, required: true, trim: true },
+    country: { type: String, required: true, trim: true, default: "India" },
+  },
+  { _id: true }
+);
+
+// ── User Schema ─────────────────────────────────────────────────────────────
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -26,13 +41,20 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false, // All public registrations are customers
     },
+    addresses: [addressSchema],
+    wishlist: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+      },
+    ],
   },
   {
-    timestamps: true, // Auto-adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-// ── Pre-Save Hook: Hash password only if it has been modified ──────────────
+// ── Pre-Save Hook: Hash password only if it has been modified ───────────────
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) return;
 
